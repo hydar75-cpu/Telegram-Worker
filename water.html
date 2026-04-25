@@ -1,0 +1,193 @@
+<!DOCTYPE HTML><html lang='ar' dir='rtl'><head>
+<title>نظام مراقبة المياه</title>
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1.0'>
+<style>
+body {font-family: Arial, sans-serif; text-align: center; direction: rtl; background: #f0f0f0; margin: 0; padding: 20px;}
+.container {max-width: 700px; margin: 0 auto; background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);}
+.card {background: #f8f9fa; border-radius: 12px; padding: 20px; margin: 15px 0; border: 3px solid; box-shadow: 0 8px 25px rgba(0,0,0,0.15);}
+.main-header-card {background: #e3f2fd; border: 3px solid #dee2e6; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; box-shadow: 0 8px 25px rgba(0,0,0,0.15); position: relative;}
+.header-content {display: flex; flex-direction: column; align-items: center; gap: 10px;}
+.system-title {margin: 0; color: #212529; font-size: 28px; font-weight: bold;}
+.update-time {padding: 8px 16px; border-radius: 8px; border: 2px solid #28a745; background: #d4edda; font-size: 16px; font-weight: bold; color: #155724; margin-top: 5px;}
+.update-time.disconnected {border-color: #dc3545; background: #f8d7da; color: #721c24;}
+.card-tank {border-color: #28a745;}
+.card-main-pump {border-color: #1e88e5;}
+.card-nozzle-pump {border-color: #ffc107;}
+.card-heater {border-color: #dc3545;}
+.tank-container {display: flex; flex-direction: column; align-items: center; margin: 20px 0;}
+.tank-liters-frame {background: white; border: 2px solid #28a745; border-radius: 8px; padding: 8px; margin: 10px 0; width: 140px;}
+.tank-liters {font-size: 32px; font-weight: bold; color: #28a745; margin: 0;}
+.vertical-progress {width: 150px; height: 200px; background: #e9ecef; border-radius: 10px; overflow: hidden; position: relative; margin: 10px 0; border: 2px solid #dee2e6;}
+.progress-fill {position: absolute; bottom: 0; width: 100%; border-radius: 8px 8px 0 0; transition: height 0.5s ease, background 0.5s ease;}
+.last-update {color: #6c757d; font-size: 12px; margin-top: 20px;}
+.info-grid {display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 15px 0;}
+.grid-item {background: rgba(0,0,0,0.05); border: 1px solid #dee2e6; border-radius: 8px; padding: 10px; text-align: center;}
+.grid-label {font-size: 13px; color: #6c757d;}
+.grid-value {font-size: 16px; font-weight: bold; color: #212529;}
+.control-buttons, .flow-control, .buttons-container { display: none; } /* مخفية في الصفحة العمومية */
+.pump-header {display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
+.pump-title {font-size: 20px; font-weight: bold; color: #212529;}
+.pump-status {padding: 6px 15px; border-radius: 20px; font-size: 16px; font-weight: bold; border: 2px solid rgba(0,0,0,0.1);}
+.status-on {background: rgba(40,167,69,0.2); color: #155724; border-color: rgba(40,167,69,0.3);}
+.status-off {background: rgba(220,53,69,0.2); color: #721c24; border-color: rgba(220,53,69,0.3);}
+.flow-value {font-size: 16px; font-weight: bold; margin: 0 12px; min-width: 35px; text-align: center;}
+.flow-btn {padding: 6px 10px; border-radius: 5px; border: none; cursor: pointer; font-size: 14px; width: 35px;}
+.flow-btn-nozzle {background: #ffc107; color: white;}
+.flow-btn-heater {background: #dc3545; color: white;}
+.action-btn {padding: 12px 24px; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: bold; margin: 5px; width: 200px;}
+.reset-btn {background: #6c757d;}
+.reset-btn:hover {background: #5a6268;}
+</style></head><body>
+<div class='container'>
+  <div class='main-header-card'>
+    <div class='header-content'>
+      <h1 class='system-title'>نظام مراقبة المياه</h1>
+      <div class='update-time' id='lastUpdateHeader'>آخر تحديث: --</div>
+      <div class='update-time' id='wifiSignalHeader'>📶 واي فاي: --</div>
+    </div>
+  </div>
+
+  <div class='card card-tank'>
+    <div class='pump-header'>
+      <div class='pump-title'>مستوى الخزان</div>
+      <div id='tankState' class='pump-status status-on'>تشغيل</div>
+    </div>
+    <div class='tank-container'>
+      <div class='vertical-progress'>
+        <div class='progress-fill' id='tankProgressFill' style='height: 0%;'></div>
+      </div>
+      <div class='tank-liters-frame'>
+        <div id='tankLiters' class='tank-liters'>--</div>
+      </div>
+      <div style='display: flex; gap: 15px; margin-top: 10px;'>
+        <div class='grid-item'>
+          <div class='grid-label'>حرارة الخزان</div>
+          <div id='tankTemp' class='grid-value'>--</div>
+        </div>
+        <div class='grid-item'>
+          <div class='grid-label'>استهلاك اليوم</div>
+          <div id='dailyConsumption' class='grid-value'>--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class='card card-main-pump'>
+    <div class='pump-header'>
+      <div class='pump-title'>مضخة الصاعد</div>
+      <div id='pumpState' class='pump-status status-on'>تشغيل</div>
+    </div>
+    <div class='info-grid'>
+      <div class='grid-item'><div class='grid-label'>معدل التدفق</div><div class='grid-value' id='flowRate'>--</div></div>
+      <div class='grid-item'><div class='grid-label'>وقت التشغيل</div><div class='grid-value' id='pumpRuntime'>--</div></div>
+      <div class='grid-item'><div class='grid-label'>حالة السيناريو</div><div class='grid-value' id='scenarioStatus'>--</div></div>
+      <div class='grid-item'><div class='grid-label'> الاستراحة</div><div class='grid-value' id='restStatus'>--</div></div>
+      <div class='grid-item'><div class='grid-label'>اختبارات فاشلة</div><div class='grid-value' id='flowStopCount'>0</div></div>
+      <div class='grid-item'><div class='grid-label'>حرارة المعالج</div><div class='grid-value' id='cpuTemp'>--</div></div>
+      <div class='grid-item'><div class='grid-label'>زمــن التشغيـل</div><div class='grid-value' id='mainPumpTotalRuntime'>--</div></div>
+      <div class='grid-item'><div class='grid-label'>مرات التشغيل</div><div class='grid-value' id='mainPumpCycles'>0</div></div>
+    </div>
+  </div>
+
+  <div class='card card-nozzle-pump'>
+    <div class='pump-header'>
+      <div class='pump-title'>مضخة النازل</div>
+      <div id='nozzlePumpState' class='pump-status status-off'>إيقاف</div>
+    </div>
+    <div style='display: flex; flex-direction: column; align-items: center;'>
+      <div style='background: rgba(0,0,0,0.05); border: 2px solid #dee2e6; border-radius: 8px; padding: 10px; margin: 10px 0; width: 120px;'>
+        <div id='nozzleFlow' style='font-size: 32px; font-weight: bold; color: #212529;'>--</div>
+      </div>
+      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; width: 100%;'>
+        <div class='grid-item'><div class='grid-label'>زمــن التشغيـل</div><div id='nozzlePumpTotalRuntime' class='grid-value'>--</div></div>
+        <div class='grid-item'><div class='grid-label'>مرات التشغيل</div><div id='nozzlePumpCycles' class='grid-value'>0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class='card card-heater'>
+    <div class='pump-header'>
+      <div class='pump-title'>سخان المياه</div>
+      <div id='heaterState' class='pump-status status-off'>إيقاف</div>
+    </div>
+    <div style='display: flex; flex-direction: column; align-items: center;'>
+      <div style='background: rgba(0,0,0,0.05); border: 2px solid #dee2e6; border-radius: 8px; padding: 10px; margin: 10px 0; width: 120px;'>
+        <div id='heaterTemp' style='font-size: 32px; font-weight: bold; color: #212529;'>--</div>
+      </div>
+      <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; width: 100%;'>
+        <div class='grid-item'><div class='grid-label'>زمــن التشغيـل</div><div id='heaterTotalRuntime' class='grid-value'>--</div></div>
+        <div class='grid-item'><div class='grid-label'>مرات التشغيل</div><div id='heaterCycles' class='grid-value'>0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div style='color: #6c757d; font-size: 12px; text-align: center; margin-top: 20px;'>إصدار 5.5.3 (عرض خارجي)</div>
+</div>
+<script>
+let failedRequests = 0;
+const maxFailedRequests = 3;
+function formatTime(milliseconds) {
+  let seconds = Math.floor(milliseconds / 1000);
+  let hours = Math.floor(seconds / 3600);
+  let minutes = Math.floor((seconds % 3600) / 60);
+  seconds = seconds % 60;
+  return (hours<10?'0':'')+hours+':'+(minutes<10?'0':'')+minutes+':'+(seconds<10?'0':'')+seconds;
+}
+function formatTimer(milliseconds) {
+  let seconds = Math.floor(milliseconds / 1000);
+  let minutes = Math.floor(seconds / 60);
+  seconds = seconds % 60;
+  return (minutes<10?'0':'')+minutes+':'+(seconds<10?'0':'')+seconds;
+}
+function formatTime12Hour(date) {
+  let h = date.getHours(), m = date.getMinutes(), s = date.getSeconds();
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+}
+async function updateDisplay() {
+  try {
+    const response = await fetch('/api/water/data?nocache=' + Math.random());
+    if (response.ok) {
+      const data = await response.json();
+      document.getElementById('wifiSignalHeader').textContent = '📶 واي فاي: ' + data.wifiSignal;
+      failedRequests = 0;
+      document.getElementById('tankLiters').textContent = data.tankLiters;
+      document.getElementById('tankTemp').textContent = Math.round(data.temperature);
+      document.getElementById('dailyConsumption').textContent = Math.round(data.dailyConsumption);
+      const progressFill = document.getElementById('tankProgressFill');
+      progressFill.style.height = data.tankLevel + '%';
+      progressFill.style.backgroundColor = data.tankLevel >= 70 ? '#28a745' : data.tankLevel >= 40 ? '#ffc107' : '#dc3545';
+      document.getElementById('flowRate').textContent = data.flowRate.toFixed(1);
+      document.getElementById('nozzleFlow').textContent = Math.round(data.nozzleFlowRate);
+      document.getElementById('heaterTemp').textContent = Math.round(data.heaterTemperature);
+      document.getElementById('pumpState').textContent = data.pumpState ? 'تشغيل' : 'إيقاف';
+      document.getElementById('pumpState').className = 'pump-status ' + (data.pumpState ? 'status-on' : 'status-off');
+      document.getElementById('nozzlePumpState').textContent = data.nozzlePumpState ? 'تشغيل' : 'إيقاف';
+      document.getElementById('nozzlePumpState').className = 'pump-status ' + (data.nozzlePumpState ? 'status-on' : 'status-off');
+      document.getElementById('heaterState').textContent = data.heaterState ? 'تشغيل' : 'إيقاف';
+      document.getElementById('heaterState').className = 'pump-status ' + (data.heaterState ? 'status-on' : 'status-off');
+      document.getElementById('pumpRuntime').textContent = data.pumpState ? formatTime(data.currentPumpRuntime) : '--';
+      document.getElementById('scenarioStatus').textContent = data.scenarioStatus;
+      document.getElementById('restStatus').textContent = data.restRunning ? formatTimer(1800000 - data.currentRestTime) : '--';
+      document.getElementById('flowStopCount').textContent = data.failedAttempts;
+      document.getElementById('cpuTemp').textContent = data.cpuTemp.toFixed(1) + '°C';
+      document.getElementById('mainPumpTotalRuntime').textContent = formatTime(data.mainPumpRuntime);
+      document.getElementById('mainPumpCycles').textContent = data.mainPumpCycles;
+      document.getElementById('nozzlePumpTotalRuntime').textContent = formatTime(data.nozzlePumpRuntime);
+      document.getElementById('nozzlePumpCycles').textContent = data.nozzlePumpCycles;
+      document.getElementById('heaterTotalRuntime').textContent = formatTime(data.heaterRuntime);
+      document.getElementById('heaterCycles').textContent = data.heaterCycles;
+      document.getElementById('lastUpdateHeader').textContent = 'آخر تحديث: ' + formatTime12Hour(new Date());
+    } else {
+      failedRequests++;
+      if (failedRequests >= maxFailedRequests) document.getElementById('lastUpdateHeader').className = 'update-time disconnected';
+    }
+  } catch (e) {
+    failedRequests++;
+    if (failedRequests >= maxFailedRequests) document.getElementById('lastUpdateHeader').className = 'update-time disconnected';
+  }
+}
+setInterval(updateDisplay, 5000);
+updateDisplay();
+</script>
+</body></html>
