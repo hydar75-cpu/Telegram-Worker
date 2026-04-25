@@ -565,7 +565,7 @@ function updateUI(data) {
 
   // الألواح الشمسية
   var pvEnergyEl = document.getElementById('pvEnergyValue');
-  pvEnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + ' kWh';
+  pvEnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + 'K';
   pvEnergyEl.style.direction = 'ltr';
   pvEnergyEl.style.display = 'inline-block';
   
