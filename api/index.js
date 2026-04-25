@@ -1,62 +1,47 @@
-// كود وسيط تيليجرام - معدل ليعمل على Render.com
-const http = require('http');
+const express = require('express');
+const axios = require('axios');
+const app = express();
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-const CHAT_ID = process.env.CHAT_ID;
+app.use(express.json({ limit: '10mb' }));
 
-if (!BOT_TOKEN) {
-  console.error('خطأ: BOT_TOKEN غير موجود في متغيرات البيئة');
-  process.exit(1);
-}
+// تخزين أحدث بيانات من ESP32
+let latestData = {};
 
-const server = http.createServer((req, res) => {
-  // استخراج المسار الكامل بعد اسم النطاق
-  const fullPath = req.url;
-  
-  console.log(`[${new Date().toISOString()}] ${req.method} ${fullPath}`);
-
-  // بناء عنوان API الأصلي
-  const targetUrl = `https://api.telegram.org${fullPath}`;
-
-  // إعداد خيارات الطلب
-  const options = {
-    method: req.method,
-    headers: {
-      'Content-Type': 'application/json',
-    }
-  };
-
-  // قراءة جسم الطلب إذا كان POST أو PUT
-  let body = '';
-  req.on('data', chunk => body += chunk);
-  req.on('end', () => {
-    if (body) {
-      options.headers['Content-Length'] = Buffer.byteLength(body);
-    }
-
-    // استخدام http أو https حسب الحاجة
-    const protocol = targetUrl.startsWith('https') ? require('https') : require('http');
-    
-    const proxyReq = protocol.request(targetUrl, options, (proxyRes) => {
-      res.writeHead(proxyRes.statusCode, proxyRes.headers);
-      proxyRes.pipe(res);
-    });
-
-    proxyReq.on('error', (err) => {
-      console.error('خطأ في الطلب إلى تيليجرام:', err.message);
-      res.writeHead(500);
-      res.end('Proxy Error');
-    });
-
-    if (body) {
-      proxyReq.write(body);
-    }
-    proxyReq.end();
-  });
+// ========== 1. استقبال بيانات ESP32 ==========
+app.post('/update', (req, res) => {
+  latestData = req.body;
+  console.log('Data received from ESP32');
+  res.sendStatus(200);
 });
 
-// الاستماع على المنفذ المحدد من Render
+// ========== 2. خدمة البيانات للمتصفح ==========
+app.get('/api/data', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.json(latestData);
+});
+
+// ========== 3. عرض صفحة الويب العامة ==========
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + '/index.html');
+});
+
+// ========== 4. وسيط تيليغرام (يعيد توجيه جميع مسارات /bot) ==========
+app.all('/bot*', async (req, res) => {
+  try {
+    const telegramURL = 'https://api.telegram.org' + req.originalUrl;
+    const response = await axios({
+      method: req.method,
+      url: telegramURL,
+      data: req.body,
+      headers: { 'Content-Type': 'application/json' }
+    });
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('Telegram proxy error:', error.message);
+    res.status(500).json({ error: 'Proxy error' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`🚀 وسيط تيليجرام يعمل على المنفذ ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
