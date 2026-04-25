@@ -74,24 +74,26 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
 .card-header h2 { color: var(--dark); font-size: 20px; margin: 0; display: flex; align-items: center; gap: 12px; }
-.system-info-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 15px; }
+.system-info-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px; }
 .info-box { background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 12px; padding: 15px; border: 2px solid #e0e0e0; display: flex; flex-direction: column; height: auto; min-height: 220px; }
 .info-box.battery { border-color: var(--success); }
 .info-box.consumption { border-color: var(--danger); }
 .info-box.voltage { border-color: var(--primary); }
+.info-box.solar { border-color: #ff9800; }
 .info-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .info-title { color: var(--dark); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .info-value { font-size: 32px !important; font-weight: 700; }
 .info-value.battery { color: var(--success); }
 .info-value.consumption { color: var(--danger); }
 .info-value.voltage { color: var(--primary); }
+.info-value.solar { color: #ff9800; }
 .info-value.data-unavailable { color: #6c757d; font-style: italic; font-size: 14px; }
-.battery-bar-container, .consumption-bar-container, .voltage-bar-container { width: 100%; height: 25px; background: #ecf0f1; border-radius: 12px; overflow: hidden; margin-top: 10px; }
+.battery-bar-container, .consumption-bar-container, .voltage-bar-container, .solar-bar-container { width: 100%; height: 25px; background: #ecf0f1; border-radius: 12px; overflow: hidden; margin-top: 10px; }
 .battery-bar-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--warning), var(--danger)); border-radius: 12px; transition: width 0.5s ease; }
 .consumption-bar-fill, .voltage-bar-fill { height: 100%; background: linear-gradient(90deg, var(--danger), var(--warning), var(--success)); border-radius: 12px; transition: width 0.5s ease; }
+.solar-bar-fill { height: 100%; background: linear-gradient(90deg, #ff9800, #ffc107); border-radius: 12px; transition: width 0.5s ease; }
 .bar-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--gray); font-weight: 500; }
 
-/* ✅ عداد الدورات الجديد */
 .cycle-counter {
   background: linear-gradient(135deg, #e3f2fd, #bbdefb);
   border: 1px solid #64b5f6;
@@ -236,10 +238,8 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 .outage-value { font-size: 18px; font-weight: 700; color: var(--danger); }
 .footer { margin-top: 20px; text-align: center; padding: 10px; color: var(--gray); font-size: 13px; }
 .version { font-weight: bold; }
-.loading-spinner { width: 20px; height: 20px; border: 2px solid #f3f3f3; border-top: 2px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 @media (max-width: 1200px) { 
-  .system-info-container { grid-template-columns: repeat(2, 1fr); } 
+  .system-info-container { grid-template-columns: repeat(3, 1fr); } 
 }
 @media (max-width: 768px) { 
   .system-info-container { grid-template-columns: 1fr; } 
@@ -249,12 +249,8 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   .info-title { font-size: 15px; }
   .info-value { font-size: 28px !important; }
   .hour-stats { display: none; }
-  .timeline-card {
-    padding: 15px;
-  }
-  .timeline-content {
-    gap: 15px;
-  }
+  .timeline-card { padding: 15px; }
+  .timeline-content { gap: 15px; }
 }
 </style>
 </head>
@@ -299,6 +295,20 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         <div class='consumption-bar-container'><div class='consumption-bar-fill' id='consumptionBar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>10</span><span>20</span><span>30</span><span>40</span></div>
         <div class='consumption-status' id='consumptionStatus'>--</div>
+      </div>
+
+      <!-- بطاقة الألواح الشمسية -->
+      <div class='info-box solar'>
+        <div class='info-header'>
+          <span class='info-title'><i class='fas fa-solar-panel'></i> الألواح الشمسية</span>
+          <span class='info-value solar' id='pvEnergyValue'>-- kWh</span>
+        </div>
+        <div class='solar-bar-container'><div class='solar-bar-fill' id='pvEnergyBar' style='width: 0%;'></div></div>
+        <div class='bar-labels'><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+        <table class='battery-table'>
+          <tr><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
+          <tr><td id='pvVoltage'>--</td><td id='pvCurrent'>--</td><td id='pvPower'>--</td></tr>
+        </table>
       </div>
 
       <!-- ========== البطارية الأولى ========== -->
@@ -385,7 +395,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     </div>
   </div>
 
-  <div class='footer'><div class='version'>الإصدار 10.0.0 - مع عدادات الدورات</div></div>
+  <div class='footer'><div class='version'>الإصدار 11.0.0 - مع بيانات الألواح الشمسية</div></div>
 </div>
 
 <script>
@@ -542,7 +552,7 @@ function updateUI(data) {
   document.getElementById('battery1Current').textContent = data.battery1Current.toFixed(1) + 'A';
   document.getElementById('battery1Temp').textContent = data.battery1Temp.toFixed(1) + '°C';
   document.getElementById('battery1Status').textContent = data.battery1Status;
-  document.getElementById('battery1Cycles').textContent = data.battery1CycleCount;   // ✅ عرض الدورات
+  document.getElementById('battery1Cycles').textContent = data.battery1CycleCount;
 
   // البطارية الثانية
   document.getElementById('battery2Percent').textContent = data.battery2Level.toFixed(0) + '%';
@@ -551,7 +561,28 @@ function updateUI(data) {
   document.getElementById('battery2Current').textContent = data.battery2Current.toFixed(1) + 'A';
   document.getElementById('battery2Temp').textContent = data.battery2Temp.toFixed(1) + '°C';
   document.getElementById('battery2Status').textContent = data.battery2Status;
-  document.getElementById('battery2Cycles').textContent = data.battery2CycleCount;   // ✅ عرض الدورات
+  document.getElementById('battery2Cycles').textContent = data.battery2CycleCount;
+
+  // الألواح الشمسية
+  var pvEnergyEl = document.getElementById('pvEnergyValue');
+  pvEnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + ' kWh';
+  pvEnergyEl.style.direction = 'ltr';
+  pvEnergyEl.style.display = 'inline-block';
+  
+  var maxEnergy = 20000; // 20 kWh
+  document.getElementById('pvEnergyBar').style.width = Math.min((data.pvEnergyToday / maxEnergy) * 100, 100) + '%';
+  
+  var pvVoltageEl = document.getElementById('pvVoltage');
+  pvVoltageEl.textContent = data.pvVoltage.toFixed(1) + ' V';
+  pvVoltageEl.style.direction = 'ltr';
+  
+  var pvCurrentEl = document.getElementById('pvCurrent');
+  pvCurrentEl.textContent = data.pvCurrent.toFixed(1) + ' A';
+  pvCurrentEl.style.direction = 'ltr';
+  
+  var pvPowerEl = document.getElementById('pvPower');
+  pvPowerEl.textContent = data.pvPower.toFixed(1) + ' W';
+  pvPowerEl.style.direction = 'ltr';
 
   document.getElementById('morningTotal').textContent = formatMinutesToHHMM(data.morningActive);
   document.getElementById('morningOutage').textContent = formatMinutesToHHMM(data.morningInactive);
