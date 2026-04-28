@@ -1,9 +1,4 @@
-// ==================== Render Worker كامل ====================
-
-let lastData = null; // آخر بيانات وردت من ESP32
-
-// ==================== صفحة HTML الرئيسية ====================
-const HTML_PAGE = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang='ar' dir='rtl'>
 <head>
 <meta charset='UTF-8'>
@@ -281,10 +276,12 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='solar-bar-container'><div class='solar-bar-fill' id='inv1EnergyBar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>5k</span><span>10k</span><span>15k</span><span>20k</span></div>
+        <!-- جدول مصفوفات -->
         <table class='battery-table'>
           <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
           <tr><td>PV1</td><td id='inv1Pv1V'>--</td><td id='inv1Pv1A'>--</td><td id='inv1Pv1W'>--</td></tr>
         </table>
+        <!-- شبكة المعلومات الجديدة -->
         <div class='grid-6'>
           <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv1GridV'>--</strong></div>
           <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv1GridHz'>--</strong></div>
@@ -303,11 +300,13 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='solar-bar-container'><div class='solar-bar-fill' id='inv2EnergyBar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
+        <!-- جدول مصفوفات -->
         <table class='battery-table'>
           <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
           <tr><td>PV1</td><td id='inv2Pv1V'>--</td><td id='inv2Pv1A'>--</td><td id='inv2Pv1W'>--</td></tr>
           <tr><td>PV2</td><td id='inv2Pv2V'>--</td><td id='inv2Pv2A'>--</td><td id='inv2Pv2W'>--</td></tr>
         </table>
+        <!-- شبكة المعلومات الجديدة -->
         <div class='grid-6'>
           <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv2GridV'>--</strong></div>
           <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv2GridHz'>--</strong></div>
@@ -630,63 +629,4 @@ function fetchData() {
 }
 </script>
 </body>
-</html>`;
-
-// ==================== التعامل مع الطلبات ====================
-async function handleRequest(request) {
-  const url = new URL(request.url);
-  const path = url.pathname;
-  const method = request.method;
-
-  // استقبال بيانات من ESP32 (POST /update)
-  if (method === 'POST' && path === '/update') {
-    try {
-      const body = await request.json();
-      lastData = body; // تخزين آخر البيانات
-      return new Response('OK', { status: 200 });
-    } catch (e) {
-      return new Response('Invalid JSON', { status: 400 });
-    }
-  }
-
-  // تقديم البيانات المخزنة كـ JSON (GET /api/data)
-  if (method === 'GET' && path === '/api/data') {
-    if (lastData) {
-      return new Response(JSON.stringify(lastData), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    } else {
-      return new Response(JSON.stringify({ error: 'No data yet' }), {
-        status: 503,
-        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
-      });
-    }
-  }
-
-  // تقديم صفحة HTML الرئيسية (GET /)
-  if (method === 'GET' && (path === '/' || path === '/index.html')) {
-    return new Response(HTML_PAGE, {
-      status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
-    });
-  }
-
-  // معالجة طلبات تيليجرام (GET/POST /bot*)
-  if (path.startsWith('/bot')) {
-    const telegramUrl = 'https://api.telegram.org' + path + url.search;
-    const init = { method: method, headers: request.headers, body: method !== 'GET' ? await request.text() : null };
-    const response = await fetch(telegramUrl, init);
-    return response;
-  }
-
-  // أي طلب آخر
-  return new Response('Not Found', { status: 404 });
-}
-
-// ==================== تشغيل العامل ====================
-export default {
-  async fetch(request, env, ctx) {
-    return handleRequest(request);
-  }
-};
+</html>
