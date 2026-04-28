@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+// ==================== Render Worker كامل ====================
+
+let lastData = null; // آخر بيانات وردت من ESP32
+
+// ==================== صفحة HTML الرئيسية ====================
+const HTML_PAGE = `<!DOCTYPE html>
 <html lang='ar' dir='rtl'>
 <head>
 <meta charset='UTF-8'>
@@ -22,7 +27,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 .update-time { padding: 8px 12px; border-radius: 5px; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; width: 100%; text-align: center; }
 .update-time.wifi-connected { background: var(--success); color: white; }
 .update-time.wifi-disconnected { background: var(--danger); color: white; }
-
 .signal-strength {
     background: #f8f9fa;
     padding: 8px 12px;
@@ -39,31 +43,10 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     transition: all 0.3s ease;
     width: 100%;
 }
-.signal-strength.excellent {
-    background: #e8f5e9;
-    color: #2e7d32;
-    border-left: 4px solid #4CAF50;
-    border-right: 4px solid #4CAF50;
-}
-.signal-strength.very-good {
-    background: #fff8e1;
-    color: #f57c00;
-    border-left: 4px solid #FFC107;
-    border-right: 4px solid #FFC107;
-}
-.signal-strength.average {
-    background: #fff3e0;
-    color: #e65100;
-    border-left: 4px solid #FF9800;
-    border-right: 4px solid #FF9800;
-}
-.signal-strength.weak {
-    background: #ffebee;
-    color: #c62828;
-    border-left: 4px solid #F44336;
-    border-right: 4px solid #F44336;
-}
-
+.signal-strength.excellent { background: #e8f5e9; color: #2e7d32; }
+.signal-strength.very-good { background: #fff8e1; color: #f57c00; }
+.signal-strength.average { background: #fff3e0; color: #e65100; }
+.signal-strength.weak { background: #ffebee; color: #c62828; }
 .card { 
   background: var(--white); 
   border-radius: 15px; 
@@ -79,21 +62,26 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 .info-box.battery { border-color: var(--success); }
 .info-box.consumption { border-color: var(--danger); }
 .info-box.voltage { border-color: var(--primary); }
-.info-box.solar { border-color: #ff9800; }
+.info-box.solar1 { border-color: #ff9800; }
+.info-box.solar2 { border-color: #2196F3; }
 .info-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .info-title { color: var(--dark); font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.info-value { font-size: 32px !important; font-weight: 700; }
+.info-value { font-size: 32px !important; font-weight: 700; direction: ltr; display: inline-block; unicode-bidi: isolate; }
 .info-value.battery { color: var(--success); }
 .info-value.consumption { color: var(--danger); }
 .info-value.voltage { color: var(--primary); }
 .info-value.solar { color: #ff9800; }
-.info-value.data-unavailable { color: #6c757d; font-style: italic; font-size: 14px; }
+
+.battery-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.battery-table th, .battery-table td { border: 1px solid #dee2e6; padding: 6px; text-align: center; }
+.battery-table th { background-color: var(--primary); color: white; font-weight: 600; }
+.battery-table td { background-color: #f8f9fa; font-weight: 500; white-space: nowrap; direction: ltr; unicode-bidi: isolate; }
+
 .battery-bar-container, .consumption-bar-container, .voltage-bar-container, .solar-bar-container { width: 100%; height: 25px; background: #ecf0f1; border-radius: 12px; overflow: hidden; margin-top: 10px; }
 .battery-bar-fill { height: 100%; background: linear-gradient(90deg, var(--success), var(--warning), var(--danger)); border-radius: 12px; transition: width 0.5s ease; }
 .consumption-bar-fill, .voltage-bar-fill { height: 100%; background: linear-gradient(90deg, var(--danger), var(--warning), var(--success)); border-radius: 12px; transition: width 0.5s ease; }
 .solar-bar-fill { height: 100%; background: linear-gradient(90deg, #ff9800, #ffc107); border-radius: 12px; transition: width 0.5s ease; }
 .bar-labels { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--gray); font-weight: 500; }
-
 .cycle-counter {
   background: linear-gradient(135deg, #e3f2fd, #bbdefb);
   border: 1px solid #64b5f6;
@@ -110,16 +98,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   justify-content: center;
   gap: 8px;
 }
-.cycle-counter i {
-  color: #1976d2;
-  font-size: 20px;
-}
-
-.battery-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-.battery-table th, .battery-table td { border: 1px solid #dee2e6; padding: 6px; text-align: center; }
-.battery-table th { background-color: var(--primary); color: white; font-weight: 600; }
-.battery-table td { background-color: #f8f9fa; font-weight: 500; }
-
+.cycle-counter i { color: #1976d2; font-size: 20px; }
 .voltage-status {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: 15px;
@@ -134,24 +113,9 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
 }
-.voltage-status.online {
-    background-color: #e8f5e9;
-    color: #2e7d32;
-    border-left: 4px solid #4CAF50;
-    border-right: 4px solid #4CAF50;
-}
-.voltage-status.offline {
-    background-color: #ffebee;
-    color: #c62828;
-    border-left: 4px solid #F44336;
-    border-right: 4px solid #F44336;
-}
-.voltage-status.nodata {
-    background-color: #f5f5f5;
-    color: #757575;
-    border-left: 4px solid #9E9E9E;
-    border-right: 4px solid #9E9E9E;
-}
+.voltage-status.online { background-color: #e8f5e9; color: #2e7d32; }
+.voltage-status.offline { background-color: #ffebee; color: #c62828; }
+.voltage-status.nodata { background-color: #f5f5f5; color: #757575; }
 .consumption-status {
     background: #f8f9fa;
     padding: 10px;
@@ -167,24 +131,9 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     border: 1px solid rgba(0, 0, 0, 0.1);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
-.consumption-status.green {
-    background: #f0f9f0;
-    color: #28a745;
-    border-left: 4px solid #28a745;
-    border-right: 4px solid #28a745;
-}
-.consumption-status.red {
-    background: #fff5f5;
-    color: #dc3545;
-    border-left: 4px solid #dc3545;
-    border-right: 4px solid #dc3545;
-}
-.consumption-status.gray {
-    background: #f8f9fa;
-    color: #6c757d;
-    border-left: 4px solid #6c757d;
-    border-right: 4px solid #6c757d;
-}
+.consumption-status.green { background: #f0f9f0; color: #28a745; }
+.consumption-status.red { background: #fff5f5; color: #dc3545; }
+.consumption-status.gray { background: #f8f9fa; color: #6c757d; }
 .timeline-card {
   background: var(--white);
   border-radius: 15px;
@@ -197,25 +146,9 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   flex-direction: column;
   gap: 20px;
 }
-.timeline-content {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-  width: 100%;
-}
-.timeline-section {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.time-period {
-  background: #f8f9fa;
-  border-radius: 10px;
-  padding: 15px;
-  border: 2px solid #e9ecef;
-  margin-bottom: 0;
-}
+.timeline-content { display: flex; flex-direction: column; gap: 25px; width: 100%; }
+.timeline-section { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+.time-period { background: #f8f9fa; border-radius: 10px; padding: 15px; border: 2px solid #e9ecef; margin-bottom: 0; }
 .time-period.morning { border-color: var(--warning); }
 .time-period.evening { border-color: var(--primary); }
 .period-title { font-weight: bold; margin-bottom: 10px; color: var(--dark); font-size: 18px; text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -238,6 +171,46 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 .outage-value { font-size: 18px; font-weight: 700; color: var(--danger); }
 .footer { margin-top: 20px; text-align: center; padding: 10px; color: var(--gray); font-size: 13px; }
 .version { font-weight: bold; }
+
+/* شبكة المعلومات (6 مربعات) */
+.grid-6 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+.grid-item {
+  background: #f8fafd;
+  border: 1px solid #e0e6ed;
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #444;
+}
+.grid-item i {
+  font-size: 16px;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+.grid-item span {
+  font-weight: 500;
+  color: #555;
+  font-size: 11px;
+}
+.grid-item strong {
+  font-size: 15px;
+  font-weight: 700;
+  color: #222;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
 @media (max-width: 1200px) { 
   .system-info-container { grid-template-columns: repeat(3, 1fr); } 
 }
@@ -251,6 +224,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   .hour-stats { display: none; }
   .timeline-card { padding: 15px; }
   .timeline-content { gap: 15px; }
+  .grid-6 { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
@@ -277,6 +251,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
       <h2><i class='fas fa-cogs'></i> مكونات النظام</h2>
     </div>
     <div class='system-info-container'>
+      <!-- الكهرباء الوطنية -->
       <div class='info-box voltage'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-bolt'></i> الكهرباء الوطنية</span>
@@ -287,6 +262,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         <div class='voltage-status' id='voltageStatus'>--</div>
       </div>
 
+      <!-- استهلاك المنزل -->
       <div class='info-box consumption'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-home'></i> استهلاك المنزل</span>
@@ -297,21 +273,52 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         <div class='consumption-status' id='consumptionStatus'>--</div>
       </div>
 
-      <!-- بطاقة الألواح الشمسية -->
-      <div class='info-box solar'>
+      <!-- بطاقة العاكس الأول -->
+      <div class='info-box solar1'>
         <div class='info-header'>
-          <span class='info-title'><i class='fas fa-solar-panel'></i> الألواح الشمسية</span>
-          <span class='info-value solar' id='pvEnergyValue'>-- kWh</span>
+          <span class='info-title'><i class='fas fa-solar-panel'></i> العاكس الأول</span>
+          <span class='info-value solar' id='inv1EnergyValue'>--</span>
         </div>
-        <div class='solar-bar-container'><div class='solar-bar-fill' id='pvEnergyBar' style='width: 0%;'></div></div>
-        <div class='bar-labels'><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+        <div class='solar-bar-container'><div class='solar-bar-fill' id='inv1EnergyBar' style='width: 0%;'></div></div>
+        <div class='bar-labels'><span>0</span><span>5k</span><span>10k</span><span>15k</span><span>20k</span></div>
         <table class='battery-table'>
-          <tr><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
-          <tr><td id='pvVoltage'>--</td><td id='pvCurrent'>--</td><td id='pvPower'>--</td></tr>
+          <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
+          <tr><td>PV1</td><td id='inv1Pv1V'>--</td><td id='inv1Pv1A'>--</td><td id='inv1Pv1W'>--</td></tr>
         </table>
+        <div class='grid-6'>
+          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv1GridV'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv1GridHz'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-home'></i><span>استهلاك المنزل</span><strong id='inv1HomeA'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-percent'></i><span>نسبة الحمل</span><strong id='inv1LoadPct'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-arrow-down'></i><span>تيار الشحن</span><strong id='inv1ChargeA'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-arrow-up'></i><span>تيار التفريغ</span><strong id='inv1DischargeA'>--</strong></div>
+        </div>
       </div>
 
-      <!-- ========== البطارية الأولى ========== -->
+      <!-- بطاقة العاكس الثاني -->
+      <div class='info-box solar2'>
+        <div class='info-header'>
+          <span class='info-title'><i class='fas fa-solar-panel'></i> العاكس الثاني</span>
+          <span class='info-value solar' id='inv2EnergyValue'>--</span>
+        </div>
+        <div class='solar-bar-container'><div class='solar-bar-fill' id='inv2EnergyBar' style='width: 0%;'></div></div>
+        <div class='bar-labels'><span>0</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
+        <table class='battery-table'>
+          <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
+          <tr><td>PV1</td><td id='inv2Pv1V'>--</td><td id='inv2Pv1A'>--</td><td id='inv2Pv1W'>--</td></tr>
+          <tr><td>PV2</td><td id='inv2Pv2V'>--</td><td id='inv2Pv2A'>--</td><td id='inv2Pv2W'>--</td></tr>
+        </table>
+        <div class='grid-6'>
+          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv2GridV'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv2GridHz'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-home'></i><span>استهلاك المنزل</span><strong id='inv2HomeA'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-percent'></i><span>نسبة الحمل</span><strong id='inv2LoadPct'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-arrow-down'></i><span>تيار الشحن</span><strong id='inv2ChargeA'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-arrow-up'></i><span>تيار التفريغ</span><strong id='inv2DischargeA'>--</strong></div>
+        </div>
+      </div>
+
+      <!-- البطارية الأولى -->
       <div class='info-box battery' id='battery1Box'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-battery-three-quarters'></i> البطارية الأولى</span>
@@ -319,19 +326,16 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='battery-bar-container'><div class='battery-bar-fill' id='battery1Bar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-        
-        <!-- ✅ عداد الدورات الجديد -->
         <div class='cycle-counter' id='battery1CyclesContainer'>
           <i class='fas fa-redo-alt'></i> <span id='battery1Cycles'>--</span> دورة
         </div>
-        
         <table class='battery-table'>
           <tr><th>الجهد</th><th>التيار</th><th>الحرارة</th><th>الحالة</th></tr>
           <tr><td id='battery1Voltage'>--</td><td id='battery1Current'>--</td><td id='battery1Temp'>--</td><td id='battery1Status'>--</td></tr>
         </table>
       </div>
 
-      <!-- ========== البطارية الثانية ========== -->
+      <!-- البطارية الثانية -->
       <div class='info-box battery' id='battery2Box'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-battery-three-quarters'></i> البطارية الثانية</span>
@@ -339,12 +343,9 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='battery-bar-container'><div class='battery-bar-fill' id='battery2Bar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-        
-        <!-- ✅ عداد الدورات الجديد -->
         <div class='cycle-counter' id='battery2CyclesContainer'>
           <i class='fas fa-redo-alt'></i> <span id='battery2Cycles'>--</span> دورة
         </div>
-        
         <table class='battery-table'>
           <tr><th>الجهد</th><th>التيار</th><th>الحرارة</th><th>الحالة</th></tr>
           <tr><td id='battery2Voltage'>--</td><td id='battery2Current'>--</td><td id='battery2Temp'>--</td><td id='battery2Status'>--</td></tr>
@@ -357,14 +358,11 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     <div class='card-header'>
       <h2><i class='fas fa-chart-line'></i> خريطة تجهيز الكهرباء</h2>
     </div>
-    
     <div class='timeline-content'>
       <div class='timeline-section'>
         <div class='time-period morning'>
           <div class='period-title'><i class='fas fa-sun'></i> ساعات الفترة الصباحية </div>
-          <div class='hour-bars-container'>
-            <div class='hour-bars' id='morningBars'></div>
-          </div>
+          <div class='hour-bars-container'><div class='hour-bars' id='morningBars'></div></div>
           <div class='morning-summary'>
             <div class='summary-title'>تجهيز الفترة الصباحية</div>
             <div class='summary-value' id='morningTotal'>00:00</div>
@@ -375,13 +373,10 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
           </div>
         </div>
       </div>
-
       <div class='timeline-section'>
         <div class='time-period evening'>
           <div class='period-title'><i class='fas fa-moon'></i> ساعات الفترة المسائية </div>
-          <div class='hour-bars-container'>
-            <div class='hour-bars' id='eveningBars'></div>
-          </div>
+          <div class='hour-bars-container'><div class='hour-bars' id='eveningBars'></div></div>
           <div class='evening-summary'>
             <div class='summary-title'>تجهيز الفترة المسائية</div>
             <div class='summary-value' id='eveningTotal'>00:00</div>
@@ -395,7 +390,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     </div>
   </div>
 
-  <div class='footer'><div class='version'>الإصدار 11.0.0 - مع بيانات الألواح الشمسية</div></div>
+  <div class='footer'><div class='version'>الإصدار 12.0.0 - مع العاكس الثاني</div></div>
 </div>
 
 <script>
@@ -433,9 +428,9 @@ function createHourRow(container, label, hourIndex) {
   const hourRow = document.createElement('div');
   hourRow.className = 'hour-row';
   hourRow.innerHTML = 
-    `<span class='hour-label'>${label}</span>
-    <div class='hour-bar-container' id='hour-bar-${hourIndex}'></div>
-    <span class='hour-stats' id='hour-stats-${hourIndex}'></span>`;
+    '<span class="hour-label">' + label + '</span>' +
+    '<div class="hour-bar-container" id="hour-bar-' + hourIndex + '"></div>' +
+    '<span class="hour-stats" id="hour-stats-' + hourIndex + '"></span>';
   container.appendChild(hourRow);
 }
 
@@ -498,6 +493,7 @@ function getConsumptionStatus(homeConsumption, battery1Level, battery2Level) {
   }
 }
 
+// نقوم بتحديث جميع العناصر الرقمية مباشرة دون تعديل خصائص العرض
 function updateUI(data) {
   const updateTimeElement = document.getElementById('lastUpdateTime');
   const updateTimeText = document.getElementById('updateTimeText');
@@ -507,22 +503,16 @@ function updateUI(data) {
 
   const signalElement = document.getElementById('wifiSignalStrength');
   const signalTextElement = document.getElementById('signalText');
-  
   signalTextElement.textContent = data.wifiSignalStatus;
   
-  if (data.wifiSignalStatus.includes('ممتازة')) {
-    signalElement.className = 'signal-strength excellent';
-  } else if (data.wifiSignalStatus.includes('جيدة جداً')) {
-    signalElement.className = 'signal-strength very-good';
-  } else if (data.wifiSignalStatus.includes('متوسطة')) {
-    signalElement.className = 'signal-strength average';
-  } else {
-    signalElement.className = 'signal-strength weak';
-  }
+  if (data.wifiSignalStatus.includes('ممتازة')) signalElement.className = 'signal-strength excellent';
+  else if (data.wifiSignalStatus.includes('جيدة جداً')) signalElement.className = 'signal-strength very-good';
+  else if (data.wifiSignalStatus.includes('متوسطة')) signalElement.className = 'signal-strength average';
+  else signalElement.className = 'signal-strength weak';
 
-  document.getElementById('nationalVoltage').textContent = data.nationalVoltage.toFixed(0) + 'V';
+  // الكهرباء الوطنية
+  document.getElementById('nationalVoltage').textContent = data.nationalVoltage.toFixed(0) + ' V';
   document.getElementById('voltageBar').style.width = ((data.nationalVoltage - 170) / (270 - 170) * 100) + '%';
-
   const voltageStatus = document.getElementById('voltageStatus');
   if (data.powerDuration) {
     if (data.nationalPowerState) {
@@ -537,52 +527,78 @@ function updateUI(data) {
     voltageStatus.className = 'voltage-status nodata';
   }
 
-  document.getElementById('consumptionValue').textContent = Math.round(data.homeConsumption) + 'A';
+  // استهلاك المنزل
+  document.getElementById('consumptionValue').textContent = Math.round(data.homeConsumption) + ' A';
   document.getElementById('consumptionBar').style.width = (data.homeConsumption / 40 * 100) + '%';
-  
   const consumptionStatus = getConsumptionStatus(data.homeConsumption, data.battery1Level, data.battery2Level);
   const consumptionStatusElement = document.getElementById('consumptionStatus');
   consumptionStatusElement.textContent = consumptionStatus.text;
   consumptionStatusElement.className = 'consumption-status ' + consumptionStatus.class;
 
   // البطارية الأولى
-  document.getElementById('battery1Percent').textContent = data.battery1Level.toFixed(0) + '%';
+  document.getElementById('battery1Percent').textContent = data.battery1Level.toFixed(0) + ' %';
   document.getElementById('battery1Bar').style.width = data.battery1Level + '%';
-  document.getElementById('battery1Voltage').textContent = data.battery1Voltage.toFixed(1) + 'V';
-  document.getElementById('battery1Current').textContent = data.battery1Current.toFixed(1) + 'A';
-  document.getElementById('battery1Temp').textContent = data.battery1Temp.toFixed(1) + '°C';
+  document.getElementById('battery1Voltage').textContent = data.battery1Voltage.toFixed(1) + ' V';
+  document.getElementById('battery1Current').textContent = data.battery1Current.toFixed(1) + ' A';
+  document.getElementById('battery1Temp').textContent = data.battery1Temp.toFixed(1) + ' °C';
   document.getElementById('battery1Status').textContent = data.battery1Status;
   document.getElementById('battery1Cycles').textContent = data.battery1CycleCount;
 
   // البطارية الثانية
-  document.getElementById('battery2Percent').textContent = data.battery2Level.toFixed(0) + '%';
+  document.getElementById('battery2Percent').textContent = data.battery2Level.toFixed(0) + ' %';
   document.getElementById('battery2Bar').style.width = data.battery2Level + '%';
-  document.getElementById('battery2Voltage').textContent = data.battery2Voltage.toFixed(1) + 'V';
-  document.getElementById('battery2Current').textContent = data.battery2Current.toFixed(1) + 'A';
-  document.getElementById('battery2Temp').textContent = data.battery2Temp.toFixed(1) + '°C';
+  document.getElementById('battery2Voltage').textContent = data.battery2Voltage.toFixed(1) + ' V';
+  document.getElementById('battery2Current').textContent = data.battery2Current.toFixed(1) + ' A';
+  document.getElementById('battery2Temp').textContent = data.battery2Temp.toFixed(1) + ' °C';
   document.getElementById('battery2Status').textContent = data.battery2Status;
   document.getElementById('battery2Cycles').textContent = data.battery2CycleCount;
 
-  // الألواح الشمسية
-  var pvEnergyEl = document.getElementById('pvEnergyValue');
-  pvEnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + 'K';
-  pvEnergyEl.style.direction = 'ltr';
-  pvEnergyEl.style.display = 'inline-block';
+  // ========== العاكس الأول ==========
+  var inv1EnergyEl = document.getElementById('inv1EnergyValue');
+  inv1EnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + ' K';
+  inv1EnergyEl.style.direction = 'ltr'; inv1EnergyEl.style.display = 'inline-block';
+  var maxEnergy1 = 20000;
+  document.getElementById('inv1EnergyBar').style.width = Math.min((data.pvEnergyToday / maxEnergy1) * 100, 100) + '%';
   
-  var maxEnergy = 20000; // 20 kWh
-  document.getElementById('pvEnergyBar').style.width = Math.min((data.pvEnergyToday / maxEnergy) * 100, 100) + '%';
-  
-  var pvVoltageEl = document.getElementById('pvVoltage');
-  pvVoltageEl.textContent = data.pvVoltage.toFixed(1) + ' V';
-  pvVoltageEl.style.direction = 'ltr';
-  
-  var pvCurrentEl = document.getElementById('pvCurrent');
-  pvCurrentEl.textContent = data.pvCurrent.toFixed(1) + ' A';
-  pvCurrentEl.style.direction = 'ltr';
-  
-  var pvPowerEl = document.getElementById('pvPower');
-  pvPowerEl.textContent = data.pvPower.toFixed(1) + ' W';
-  pvPowerEl.style.direction = 'ltr';
+  // جدول المصفوفة (نستخدم فقط textContent، لا نغير display)
+  document.getElementById('inv1Pv1V').textContent = data.pvVoltage.toFixed(1) + ' V';
+  document.getElementById('inv1Pv1A').textContent = data.pvCurrent.toFixed(1) + ' A';
+  document.getElementById('inv1Pv1W').textContent = data.pvPower.toFixed(1) + ' W';
+
+  // شبكة المعلومات للعاكس الأول
+  document.getElementById('inv1GridV').textContent = (data.gridVoltage || data.nationalVoltage || 0).toFixed(0) + ' V';
+  document.getElementById('inv1GridHz').textContent = (data.gridFrequency || 50).toFixed(1) + ' Hz';
+  document.getElementById('inv1HomeA').textContent = Math.round(data.homeConsumption) + ' A';
+  document.getElementById('inv1LoadPct').textContent = (data.loadPercent || 0).toFixed(0) + ' %';
+  document.getElementById('inv1ChargeA').textContent = (data.batteryChargeCurrent || 0).toFixed(1) + ' A';
+  document.getElementById('inv1DischargeA').textContent = (data.batteryDischargeCurrent || 0).toFixed(1) + ' A';
+
+  // ========== العاكس الثاني ==========
+  if (data.inv2) {
+    var inv2 = data.inv2;
+    var totalEnergy2 = inv2.pv1EnergyToday + inv2.pv2EnergyToday;
+    var inv2EnergyEl = document.getElementById('inv2EnergyValue');
+    inv2EnergyEl.textContent = Math.round(totalEnergy2) + ' K';
+    inv2EnergyEl.style.direction = 'ltr'; inv2EnergyEl.style.display = 'inline-block';
+    var maxEnergy2 = 40000;
+    document.getElementById('inv2EnergyBar').style.width = Math.min((totalEnergy2 / maxEnergy2) * 100, 100) + '%';
+    
+    // جدول المصفوفة
+    document.getElementById('inv2Pv1V').textContent = inv2.pv1Voltage.toFixed(1) + ' V';
+    document.getElementById('inv2Pv1A').textContent = inv2.pv1Current.toFixed(1) + ' A';
+    document.getElementById('inv2Pv1W').textContent = inv2.pv1Power.toFixed(0) + ' W';
+    document.getElementById('inv2Pv2V').textContent = inv2.pv2Voltage.toFixed(1) + ' V';
+    document.getElementById('inv2Pv2A').textContent = inv2.pv2Current.toFixed(1) + ' A';
+    document.getElementById('inv2Pv2W').textContent = inv2.pv2Power.toFixed(0) + ' W';
+
+    // شبكة المعلومات للعاكس الثاني
+    document.getElementById('inv2GridV').textContent = (inv2.acInputVoltage || 0).toFixed(0) + ' V';
+    document.getElementById('inv2GridHz').textContent = (inv2.acInputFrequency || 0).toFixed(1) + ' Hz';
+    document.getElementById('inv2HomeA').textContent = (inv2.homeCurrent || 0).toFixed(1) + ' A';
+    document.getElementById('inv2LoadPct').textContent = (inv2.loadPercent || 0).toFixed(0) + ' %';
+    document.getElementById('inv2ChargeA').textContent = (inv2.batteryChargeCurrent || 0).toFixed(1) + ' A';
+    document.getElementById('inv2DischargeA').textContent = (inv2.batteryDischargeCurrent || 0).toFixed(1) + ' A';
+  }
 
   document.getElementById('morningTotal').textContent = formatMinutesToHHMM(data.morningActive);
   document.getElementById('morningOutage').textContent = formatMinutesToHHMM(data.morningInactive);
@@ -614,4 +630,63 @@ function fetchData() {
 }
 </script>
 </body>
-</html>
+</html>`;
+
+// ==================== التعامل مع الطلبات ====================
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const method = request.method;
+
+  // استقبال بيانات من ESP32 (POST /update)
+  if (method === 'POST' && path === '/update') {
+    try {
+      const body = await request.json();
+      lastData = body; // تخزين آخر البيانات
+      return new Response('OK', { status: 200 });
+    } catch (e) {
+      return new Response('Invalid JSON', { status: 400 });
+    }
+  }
+
+  // تقديم البيانات المخزنة كـ JSON (GET /api/data)
+  if (method === 'GET' && path === '/api/data') {
+    if (lastData) {
+      return new Response(JSON.stringify(lastData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    } else {
+      return new Response(JSON.stringify({ error: 'No data yet' }), {
+        status: 503,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+      });
+    }
+  }
+
+  // تقديم صفحة HTML الرئيسية (GET /)
+  if (method === 'GET' && (path === '/' || path === '/index.html')) {
+    return new Response(HTML_PAGE, {
+      status: 200,
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Access-Control-Allow-Origin': '*' }
+    });
+  }
+
+  // معالجة طلبات تيليجرام (GET/POST /bot*)
+  if (path.startsWith('/bot')) {
+    const telegramUrl = 'https://api.telegram.org' + path + url.search;
+    const init = { method: method, headers: request.headers, body: method !== 'GET' ? await request.text() : null };
+    const response = await fetch(telegramUrl, init);
+    return response;
+  }
+
+  // أي طلب آخر
+  return new Response('Not Found', { status: 404 });
+}
+
+// ==================== تشغيل العامل ====================
+export default {
+  async fetch(request, env, ctx) {
+    return handleRequest(request);
+  }
+};
