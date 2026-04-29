@@ -567,7 +567,7 @@ function updateUI(data) {
   // شبكة المعلومات للعاكس الأول
   document.getElementById('inv1GridV').textContent = (data.gridVoltage || data.nationalVoltage || 0).toFixed(0) + ' V';
   document.getElementById('inv1GridHz').textContent = (data.gridFrequency || 50).toFixed(1) + ' Hz';
-  document.getElementById('inv1HomeA').textContent = Math.round(data.homeConsumption) + ' A';
+  document.getElementById('inv1HomeA').textContent = (data.apiHomeConsumption || 0).toFixed(1) + ' A';
   document.getElementById('inv1LoadPct').textContent = (data.loadPercent || 0).toFixed(0) + ' %';
   document.getElementById('inv1ChargeA').textContent = (data.batteryChargeCurrent || 0).toFixed(1) + ' A';
   document.getElementById('inv1DischargeA').textContent = (data.batteryDischargeCurrent || 0).toFixed(1) + ' A';
