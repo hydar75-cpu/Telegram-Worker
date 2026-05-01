@@ -52,7 +52,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 }
 .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
 .card-header h2 { color: var(--dark); font-size: 20px; margin: 0; display: flex; align-items: center; gap: 12px; }
-.system-info-container { display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px; }
+.system-info-container { display: grid; grid-template-columns: repeat(6, 1fr); gap: 15px; margin-top: 15px; }
 .info-box { background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 12px; padding: 15px; border: 2px solid #e0e0e0; display: flex; flex-direction: column; height: auto; min-height: 220px; }
 .info-box.battery { border-color: var(--success); }
 .info-box.consumption { border-color: var(--danger); }
@@ -206,8 +206,51 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   unicode-bidi: isolate;
 }
 
+/* بطاقة ميزان الطاقة */
+.balance-card {
+  background: var(--white);
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: var(--shadow);
+  border: 4px solid #4CAF50; /* إطار أخضر */
+}
+.balance-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  gap: 15px;
+}
+.balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex: 1;
+  border: 3px solid #ccc;
+  border-radius: 12px;
+  padding: 20px 10px;
+  min-height: 120px;
+  transition: all 0.3s ease;
+}
+.balance-item i { font-size: 32px; }
+.balance-item span { font-size: 16px; font-weight: 600; text-align: center; }
+.balance-item strong { font-size: 20px; font-weight: 700; direction: ltr; unicode-bidi: isolate; }
+
+/* ألوان العناصر */
+.balance-item.home { border-color: #e74c3c; }
+.balance-item.home i, .balance-item.home span, .balance-item.home strong { color: #e74c3c; }
+
+.balance-item.grid { border-color: #3498db; }
+.balance-item.grid i, .balance-item.grid span, .balance-item.grid strong { color: #3498db; }
+
+.balance-item.solar { border-color: #f39c12; }
+.balance-item.solar i, .balance-item.solar span, .balance-item.solar strong { color: #f39c12; }
+
 @media (max-width: 1200px) { 
   .system-info-container { grid-template-columns: repeat(3, 1fr); } 
+  .balance-row { flex-wrap: wrap; }
 }
 @media (max-width: 768px) { 
   .system-info-container { grid-template-columns: 1fr; } 
@@ -220,6 +263,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
   .timeline-card { padding: 15px; }
   .timeline-content { gap: 15px; }
   .grid-6 { grid-template-columns: 1fr 1fr; }
+  .balance-row { flex-direction: column; }
 }
 </style>
 </head>
@@ -246,7 +290,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
       <h2><i class='fas fa-cogs'></i> مكونات النظام</h2>
     </div>
     <div class='system-info-container'>
-      <!-- الكهرباء الوطنية -->
       <div class='info-box voltage'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-bolt'></i> الكهرباء الوطنية</span>
@@ -257,7 +300,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         <div class='voltage-status' id='voltageStatus'>--</div>
       </div>
 
-      <!-- استهلاك المنزل -->
       <div class='info-box consumption'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-home'></i> استهلاك المنزل</span>
@@ -268,7 +310,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         <div class='consumption-status' id='consumptionStatus'>--</div>
       </div>
 
-      <!-- بطاقة العاكس الأول -->
       <div class='info-box solar1'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-solar-panel'></i> العاكس الأول</span>
@@ -276,12 +317,10 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='solar-bar-container'><div class='solar-bar-fill' id='inv1EnergyBar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>5k</span><span>10k</span><span>15k</span><span>20k</span></div>
-        <!-- جدول مصفوفات -->
         <table class='battery-table'>
           <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
           <tr><td>PV1</td><td id='inv1Pv1V'>--</td><td id='inv1Pv1A'>--</td><td id='inv1Pv1W'>--</td></tr>
         </table>
-        <!-- شبكة المعلومات الجديدة -->
         <div class='grid-6'>
           <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv1GridV'>--</strong></div>
           <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv1GridHz'>--</strong></div>
@@ -292,7 +331,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
       </div>
 
-      <!-- بطاقة العاكس الثاني -->
       <div class='info-box solar2'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-solar-panel'></i> العاكس الثاني</span>
@@ -300,13 +338,11 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
         <div class='solar-bar-container'><div class='solar-bar-fill' id='inv2EnergyBar' style='width: 0%;'></div></div>
         <div class='bar-labels'><span>0</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
-        <!-- جدول مصفوفات -->
         <table class='battery-table'>
           <tr><th></th><th>الجهد</th><th>التيار</th><th>القدرة</th></tr>
           <tr><td>PV1</td><td id='inv2Pv1V'>--</td><td id='inv2Pv1A'>--</td><td id='inv2Pv1W'>--</td></tr>
           <tr><td>PV2</td><td id='inv2Pv2V'>--</td><td id='inv2Pv2A'>--</td><td id='inv2Pv2W'>--</td></tr>
         </table>
-        <!-- شبكة المعلومات الجديدة -->
         <div class='grid-6'>
           <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv2GridV'>--</strong></div>
           <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv2GridHz'>--</strong></div>
@@ -317,7 +353,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </div>
       </div>
 
-      <!-- البطارية الأولى -->
       <div class='info-box battery' id='battery1Box'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-battery-three-quarters'></i> البطارية الأولى</span>
@@ -334,7 +369,6 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
         </table>
       </div>
 
-      <!-- البطارية الثانية -->
       <div class='info-box battery' id='battery2Box'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-battery-three-quarters'></i> البطارية الثانية</span>
@@ -389,7 +423,30 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     </div>
   </div>
 
-  <div class='footer'><div class='version'>الإصدار 12.0.0 - مع العاكس الثاني</div></div>
+  <div class='balance-card'>
+    <div class='card-header'>
+      <h2><i class='fas fa-balance-scale'></i> ميزان الطاقة</h2>
+    </div>
+    <div class='balance-row'>
+      <div class='balance-item home'>
+        <i class='fas fa-home'></i>
+        <span>استهلاك المنزل</span>
+        <strong id='balanceHome'>0.0 kWh</strong>
+      </div>
+      <div class='balance-item grid'>
+        <i class='fas fa-bolt'></i>
+        <span>الكهرباء الوطنية</span>
+        <strong id='balanceGrid'>0.0 kWh</strong>
+      </div>
+      <div class='balance-item solar'>
+        <i class='fas fa-solar-panel'></i>
+        <span>طاقة الألواح</span>
+        <strong id='balanceSolar'>0.0 kWh</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class='footer'><div class='version'>الإصدار 13.0.0 - مع ميزان الطاقة</div></div>
 </div>
 
 <script>
@@ -427,9 +484,9 @@ function createHourRow(container, label, hourIndex) {
   const hourRow = document.createElement('div');
   hourRow.className = 'hour-row';
   hourRow.innerHTML = 
-    '<span class="hour-label">' + label + '</span>' +
-    '<div class="hour-bar-container" id="hour-bar-' + hourIndex + '"></div>' +
-    '<span class="hour-stats" id="hour-stats-' + hourIndex + '"></span>';
+    `<span class='hour-label'>${label}</span>
+    <div class='hour-bar-container' id='hour-bar-${hourIndex}'></div>
+    <span class='hour-stats' id='hour-stats-${hourIndex}'></span>`;
   container.appendChild(hourRow);
 }
 
@@ -492,7 +549,6 @@ function getConsumptionStatus(homeConsumption, battery1Level, battery2Level) {
   }
 }
 
-// نقوم بتحديث جميع العناصر الرقمية مباشرة دون تعديل خصائص العرض
 function updateUI(data) {
   const updateTimeElement = document.getElementById('lastUpdateTime');
   const updateTimeText = document.getElementById('updateTimeText');
@@ -559,12 +615,10 @@ function updateUI(data) {
   var maxEnergy1 = 20000;
   document.getElementById('inv1EnergyBar').style.width = Math.min((data.pvEnergyToday / maxEnergy1) * 100, 100) + '%';
   
-  // جدول المصفوفة (نستخدم فقط textContent، لا نغير display)
   document.getElementById('inv1Pv1V').textContent = data.pvVoltage.toFixed(1) + ' V';
   document.getElementById('inv1Pv1A').textContent = data.pvCurrent.toFixed(1) + ' A';
   document.getElementById('inv1Pv1W').textContent = data.pvPower.toFixed(1) + ' W';
 
-  // شبكة المعلومات للعاكس الأول
   document.getElementById('inv1GridV').textContent = (data.gridVoltage || data.nationalVoltage || 0).toFixed(0) + ' V';
   document.getElementById('inv1GridHz').textContent = (data.gridFrequency || 50).toFixed(1) + ' Hz';
   document.getElementById('inv1HomeA').textContent = (data.apiHomeConsumption || 0).toFixed(1) + ' A';
@@ -582,7 +636,6 @@ function updateUI(data) {
     var maxEnergy2 = 40000;
     document.getElementById('inv2EnergyBar').style.width = Math.min((totalEnergy2 / maxEnergy2) * 100, 100) + '%';
     
-    // جدول المصفوفة
     document.getElementById('inv2Pv1V').textContent = inv2.pv1Voltage.toFixed(1) + ' V';
     document.getElementById('inv2Pv1A').textContent = inv2.pv1Current.toFixed(1) + ' A';
     document.getElementById('inv2Pv1W').textContent = inv2.pv1Power.toFixed(0) + ' W';
@@ -590,14 +643,19 @@ function updateUI(data) {
     document.getElementById('inv2Pv2A').textContent = inv2.pv2Current.toFixed(1) + ' A';
     document.getElementById('inv2Pv2W').textContent = inv2.pv2Power.toFixed(0) + ' W';
 
-    // شبكة المعلومات للعاكس الثاني
-    document.getElementById('inv2GridV').textContent = (inv2.acInputVoltage || 0).toFixed(0) + ' V';
-    document.getElementById('inv2GridHz').textContent = (inv2.acInputFrequency || 0).toFixed(1) + ' Hz';
-    document.getElementById('inv2HomeA').textContent = (inv2.homeCurrent || 0).toFixed(1) + ' A';
-    document.getElementById('inv2LoadPct').textContent = (inv2.loadPercent || 0).toFixed(0) + ' %';
-    document.getElementById('inv2ChargeA').textContent = (inv2.batteryChargeCurrent || 0).toFixed(1) + ' A';
-    document.getElementById('inv2DischargeA').textContent = (inv2.batteryDischargeCurrent || 0).toFixed(1) + ' A';
+    document.getElementById('inv2GridV').textContent = inv2.acInputVoltage.toFixed(0) + ' V';
+    document.getElementById('inv2GridHz').textContent = inv2.acInputFrequency.toFixed(1) + ' Hz';
+    document.getElementById('inv2HomeA').textContent = inv2.homeCurrent.toFixed(1) + ' A';
+    document.getElementById('inv2LoadPct').textContent = inv2.loadPercent.toFixed(0) + ' %';
+    document.getElementById('inv2ChargeA').textContent = inv2.batteryChargeCurrent.toFixed(1) + ' A';
+    document.getElementById('inv2DischargeA').textContent = inv2.batteryDischargeCurrent.toFixed(1) + ' A';
   }
+
+  // ========== ميزان الطاقة ==========
+  document.getElementById('balanceHome').textContent = (data.homeEnergyToday || 0).toFixed(1) + ' kWh';
+  document.getElementById('balanceGrid').textContent = (data.gridEnergyToday || 0).toFixed(1) + ' kWh';
+  var totalSolar = (data.pvEnergyToday || 0) + (data.inv2 ? (data.inv2.pv1EnergyToday + data.inv2.pv2EnergyToday) : 0);
+  document.getElementById('balanceSolar').textContent = totalSolar.toFixed(1) + ' kWh';
 
   document.getElementById('morningTotal').textContent = formatMinutesToHHMM(data.morningActive);
   document.getElementById('morningOutage').textContent = formatMinutesToHHMM(data.morningInactive);
