@@ -321,8 +321,8 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
           <tr><td>PV1</td><td id='inv1Pv1V'>--</td><td id='inv1Pv1A'>--</td><td id='inv1Pv1W'>--</td></tr>
         </table>
         <div class='grid-6'>
-          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv1GridV'>--</strong></div>
-          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv1GridHz'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الشبكة</span><strong id='inv1GridV'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الشبكة</span><strong id='inv1GridHz'>--</strong></div>
           <div class='grid-item'><i class='fas fa-home'></i><span>استهلاك المنزل</span><strong id='inv1HomeA'>--</strong></div>
           <div class='grid-item'><i class='fas fa-percent'></i><span>نسبة الحمل</span><strong id='inv1LoadPct'>--</strong></div>
           <div class='grid-item'><i class='fas fa-arrow-down'></i><span>تيار الشحن</span><strong id='inv1ChargeA'>--</strong></div>
@@ -343,8 +343,8 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
           <tr><td>PV2</td><td id='inv2Pv2V'>--</td><td id='inv2Pv2A'>--</td><td id='inv2Pv2W'>--</td></tr>
         </table>
         <div class='grid-6'>
-          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الوطنية</span><strong id='inv2GridV'>--</strong></div>
-          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الوطنية</span><strong id='inv2GridHz'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-bolt'></i><span>جهد الشبكة</span><strong id='inv2GridV'>--</strong></div>
+          <div class='grid-item'><i class='fas fa-wave-square'></i><span>تردد الشبكة</span><strong id='inv2GridHz'>--</strong></div>
           <div class='grid-item'><i class='fas fa-home'></i><span>استهلاك المنزل</span><strong id='inv2HomeA'>--</strong></div>
           <div class='grid-item'><i class='fas fa-percent'></i><span>نسبة الحمل</span><strong id='inv2LoadPct'>--</strong></div>
           <div class='grid-item'><i class='fas fa-arrow-down'></i><span>تيار الشحن</span><strong id='inv2ChargeA'>--</strong></div>
@@ -449,8 +449,8 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
 </div>
 
 <script>
-// ========== تحديث منفصل للخريطة ==========
-var lastMinuteData = null;  // تخزين آخر بيانات دقيقة للخريطة
+// ========== تحديث منفصل للخريطة (مع تخزين محلي للأشرطة) ==========
+var lastMinuteData = null;
 
 function formatMinutesToHHMM(minutes) {
   if (isNaN(minutes) || minutes < 0) return '00:00';
@@ -494,7 +494,7 @@ function createHourRow(container, label, hourIndex) {
 
 function updateHourBars(powerMinutes) {
   if (!powerMinutes || powerMinutes.length !== 1440) return;
-  lastMinuteData = powerMinutes; // حفظ للتحديثات السريعة
+  lastMinuteData = powerMinutes;
   for (let i = 0; i < 24; i++) {
     const barContainer = document.getElementById('hour-bar-' + i);
     if (barContainer) {
@@ -517,7 +517,6 @@ function updateHourBars(powerMinutes) {
   }
 }
 
-// إعادة رسم الأشرطة من آخر نسخة مخزنة (عند التحديث السريع)
 function refreshHourBarsFromCache() {
   if (lastMinuteData) {
     updateHourBars(lastMinuteData);
@@ -561,7 +560,6 @@ function getConsumptionStatus(homeConsumption, battery1Level, battery2Level) {
 }
 
 function updateUI(data) {
-  // ===== إذا كان تحديث الخريطة فقط =====
   if (data.type === 'minuteUpdate') {
     if (data.currentTime) {
       document.getElementById('updateTimeText').textContent = 'آخر تحديث للخريطة: ' + data.currentTime;
@@ -569,17 +567,15 @@ function updateUI(data) {
     if (data.minuteData) {
       updateHourBars(data.minuteData);
     }
-    // تحديث الإحصائيات اليومية إن وجدت
     if (data.morningActive !== undefined) {
       document.getElementById('morningTotal').textContent = formatMinutesToHHMM(data.morningActive);
       document.getElementById('morningOutage').textContent = formatMinutesToHHMM(data.morningInactive);
       document.getElementById('eveningTotal').textContent = formatMinutesToHHMM(data.eveningActive);
       document.getElementById('eveningOutage').textContent = formatMinutesToHHMM(data.eveningInactive);
     }
-    return;  // لا نعالج باقي الحقول
+    return;
   }
 
-  // ===== تحديث سريع (fastUpdate) أو كامل عادي =====
   const updateTimeElement = document.getElementById('lastUpdateTime');
   const updateTimeText = document.getElementById('updateTimeText');
   
@@ -595,7 +591,6 @@ function updateUI(data) {
   else if (data.wifiSignalStatus && data.wifiSignalStatus.includes('متوسطة')) signalElement.className = 'signal-strength average';
   else signalElement.className = 'signal-strength weak';
 
-  // الكهرباء الوطنية
   if (data.nationalVoltage !== undefined) {
     document.getElementById('nationalVoltage').textContent = data.nationalVoltage.toFixed(0) + ' V';
     document.getElementById('voltageBar').style.width = ((data.nationalVoltage - 170) / (270 - 170) * 100) + '%';
@@ -614,7 +609,6 @@ function updateUI(data) {
     }
   }
 
-  // استهلاك المنزل
   if (data.homeConsumption !== undefined) {
     document.getElementById('consumptionValue').textContent = Math.round(data.homeConsumption) + ' A';
     document.getElementById('consumptionBar').style.width = (data.homeConsumption / 40 * 100) + '%';
@@ -624,7 +618,6 @@ function updateUI(data) {
     consumptionStatusElement.className = 'consumption-status ' + consumptionStatus.class;
   }
 
-  // البطارية الأولى
   if (data.battery1Level !== undefined) {
     document.getElementById('battery1Percent').textContent = data.battery1Level.toFixed(0) + ' %';
     document.getElementById('battery1Bar').style.width = data.battery1Level + '%';
@@ -635,7 +628,6 @@ function updateUI(data) {
     document.getElementById('battery1Cycles').textContent = data.battery1CycleCount;
   }
 
-  // البطارية الثانية
   if (data.battery2Level !== undefined) {
     document.getElementById('battery2Percent').textContent = data.battery2Level.toFixed(0) + ' %';
     document.getElementById('battery2Bar').style.width = data.battery2Level + '%';
@@ -646,7 +638,6 @@ function updateUI(data) {
     document.getElementById('battery2Cycles').textContent = data.battery2CycleCount;
   }
 
-  // العاكس الأول
   if (data.pvEnergyToday !== undefined) {
     var inv1EnergyEl = document.getElementById('inv1EnergyValue');
     inv1EnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + ' K';
@@ -658,7 +649,10 @@ function updateUI(data) {
     document.getElementById('inv1Pv1A').textContent = data.pvCurrent.toFixed(1) + ' A';
     document.getElementById('inv1Pv1W').textContent = data.pvPower.toFixed(1) + ' W';
 
-    document.getElementById('inv1GridV').textContent = (data.gridVoltage || data.nationalVoltage || 0).toFixed(0) + ' V';
+    // ==== التعديل المطلوب: استخدام gridVoltage فقط (بدون الرجوع إلى nationalVoltage) ====
+    document.getElementById('inv1GridV').textContent = (data.gridVoltage || 0).toFixed(0) + ' V';
+    // =====================================================================
+    
     document.getElementById('inv1GridHz').textContent = (data.gridFrequency || 50).toFixed(1) + ' Hz';
     document.getElementById('inv1HomeA').textContent = (data.apiHomeConsumption || 0).toFixed(1) + ' A';
     document.getElementById('inv1LoadPct').textContent = (data.loadPercent || 0).toFixed(0) + ' %';
@@ -666,7 +660,6 @@ function updateUI(data) {
     document.getElementById('inv1DischargeA').textContent = (data.batteryDischargeCurrent || 0).toFixed(1) + ' A';
   }
 
-  // العاكس الثاني
   if (data.inv2) {
     var inv2 = data.inv2;
     var totalEnergy2 = inv2.pv1EnergyToday + inv2.pv2EnergyToday;
@@ -691,7 +684,6 @@ function updateUI(data) {
     document.getElementById('inv2DischargeA').textContent = inv2.batteryDischargeCurrent.toFixed(1) + ' A';
   }
 
-  // ميزان الطاقة
   if (data.homeEnergyToday !== undefined) {
     document.getElementById('balanceHome').textContent = data.homeEnergyToday.toFixed(1) + ' kWh';
     document.getElementById('balanceGrid').textContent = data.gridEnergyToday.toFixed(1) + ' kWh';
@@ -699,7 +691,6 @@ function updateUI(data) {
     document.getElementById('balanceSolar').textContent = totalSolar.toFixed(1) + ' kWh';
   }
 
-  // الإحصائيات اليومية
   if (data.morningActive !== undefined) {
     document.getElementById('morningTotal').textContent = formatMinutesToHHMM(data.morningActive);
     document.getElementById('morningOutage').textContent = formatMinutesToHHMM(data.morningInactive);
@@ -707,17 +698,20 @@ function updateUI(data) {
     document.getElementById('eveningOutage').textContent = formatMinutesToHHMM(data.eveningInactive);
   }
 
-  // إذا احتوى التحديث السريع أيضًا على minuteData (للتوافق مع القديم)
   if (data.minuteData && data.minuteData.length === 1440) {
     updateHourBars(data.minuteData);
   } else {
-    // إعادة رسم الخريطة من الذاكرة المؤقتة (إذا لم ترد في هذا التحديث)
     refreshHourBarsFromCache();
   }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
   createHourBars();
+  // إنشاء مصفوفة افتراضية لتظهر الأشرطة عند أول تحميل
+  if (!lastMinuteData) {
+    lastMinuteData = new Array(1440).fill(-1);
+    updateHourBars(lastMinuteData);
+  }
   fetchData();
   setInterval(fetchData, 5000);
 });
