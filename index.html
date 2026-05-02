@@ -289,6 +289,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
       <h2><i class='fas fa-cogs'></i> مكونات النظام</h2>
     </div>
     <div class='system-info-container'>
+      <!-- كل بطاقات النظام كما هي بدون تغيير -->
       <div class='info-box voltage'>
         <div class='info-header'>
           <span class='info-title'><i class='fas fa-bolt'></i> الكهرباء الوطنية</span>
@@ -386,6 +387,7 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     </div>
   </div>
 
+  <!-- بطاقات أخرى (الخريطة والميزان) بدون تغيير -->
   <div class='timeline-card'>
     <div class='card-header'>
       <h2><i class='fas fa-chart-line'></i> خريطة تجهيز الكهرباء</h2>
@@ -445,11 +447,11 @@ body { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height
     </div>
   </div>
 
-  <div class='footer'><div class='version'>الإصدار 14.0.0 - تحديث منفصل للخريطة</div></div>
+  <div class='footer'><div class='version'>الإصدار 14.0.2 - تصحيح كامل لعرض الطاقة</div></div>
 </div>
 
 <script>
-// ========== تحديث منفصل للخريطة (مع تخزين محلي للأشرطة) ==========
+// ========== محدث: عرض الطاقة التراكمية بالكيلوواط-ساعة ومنازل عشرية ==========
 var lastMinuteData = null;
 
 function formatMinutesToHHMM(minutes) {
@@ -638,21 +640,19 @@ function updateUI(data) {
     document.getElementById('battery2Cycles').textContent = data.battery2CycleCount;
   }
 
+  // ========== العاكس الأول (طاقة يومية بالكيلوواط-ساعة) ==========
   if (data.pvEnergyToday !== undefined) {
     var inv1EnergyEl = document.getElementById('inv1EnergyValue');
-    inv1EnergyEl.textContent = Math.round(data.pvEnergyToday / 1000) + ' K';
+    inv1EnergyEl.textContent = (data.pvEnergyToday / 1000).toFixed(1) + ' K';
     inv1EnergyEl.style.direction = 'ltr'; inv1EnergyEl.style.display = 'inline-block';
-    var maxEnergy1 = 20000;
+    var maxEnergy1 = 20000; // 20 kWh بالواط-ساعة
     document.getElementById('inv1EnergyBar').style.width = Math.min((data.pvEnergyToday / maxEnergy1) * 100, 100) + '%';
     
     document.getElementById('inv1Pv1V').textContent = data.pvVoltage.toFixed(1) + ' V';
     document.getElementById('inv1Pv1A').textContent = data.pvCurrent.toFixed(1) + ' A';
     document.getElementById('inv1Pv1W').textContent = data.pvPower.toFixed(1) + ' W';
 
-    // ==== التعديل المطلوب: استخدام gridVoltage فقط (بدون الرجوع إلى nationalVoltage) ====
     document.getElementById('inv1GridV').textContent = (data.gridVoltage || 0).toFixed(0) + ' V';
-    // =====================================================================
-    
     document.getElementById('inv1GridHz').textContent = (data.gridFrequency || 50).toFixed(1) + ' Hz';
     document.getElementById('inv1HomeA').textContent = (data.apiHomeConsumption || 0).toFixed(1) + ' A';
     document.getElementById('inv1LoadPct').textContent = (data.loadPercent || 0).toFixed(0) + ' %';
@@ -660,13 +660,14 @@ function updateUI(data) {
     document.getElementById('inv1DischargeA').textContent = (data.batteryDischargeCurrent || 0).toFixed(1) + ' A';
   }
 
+  // ========== العاكس الثاني (طاقة يومية بالكيلوواط-ساعة، شريط بمقياس 40 kWh) ==========
   if (data.inv2) {
     var inv2 = data.inv2;
     var totalEnergy2 = inv2.pv1EnergyToday + inv2.pv2EnergyToday;
     var inv2EnergyEl = document.getElementById('inv2EnergyValue');
-    inv2EnergyEl.textContent = Math.round(totalEnergy2) + ' K';
+    inv2EnergyEl.textContent = totalEnergy2.toFixed(1) + ' K';
     inv2EnergyEl.style.direction = 'ltr'; inv2EnergyEl.style.display = 'inline-block';
-    var maxEnergy2 = 40000;
+    var maxEnergy2 = 40; // 40 كيلوواط-ساعة (وليس 40000)
     document.getElementById('inv2EnergyBar').style.width = Math.min((totalEnergy2 / maxEnergy2) * 100, 100) + '%';
     
     document.getElementById('inv2Pv1V').textContent = inv2.pv1Voltage.toFixed(1) + ' V';
@@ -684,10 +685,14 @@ function updateUI(data) {
     document.getElementById('inv2DischargeA').textContent = inv2.batteryDischargeCurrent.toFixed(1) + ' A';
   }
 
+  // ========== ميزان الطاقة (جميع القيم بالكيلوواط-ساعة) ==========
   if (data.homeEnergyToday !== undefined) {
     document.getElementById('balanceHome').textContent = data.homeEnergyToday.toFixed(1) + ' kWh';
     document.getElementById('balanceGrid').textContent = data.gridEnergyToday.toFixed(1) + ' kWh';
-    var totalSolar = (data.pvEnergyToday || 0) + (data.inv2 ? (data.inv2.pv1EnergyToday + data.inv2.pv2EnergyToday) : 0);
+    
+    var solar1KWh = (data.pvEnergyToday || 0) / 1000;
+    var solar2KWh = data.inv2 ? (data.inv2.pv1EnergyToday + data.inv2.pv2EnergyToday) : 0;
+    var totalSolar = solar1KWh + solar2KWh;
     document.getElementById('balanceSolar').textContent = totalSolar.toFixed(1) + ' kWh';
   }
 
@@ -707,7 +712,6 @@ function updateUI(data) {
 
 document.addEventListener('DOMContentLoaded', function() {
   createHourBars();
-  // إنشاء مصفوفة افتراضية لتظهر الأشرطة عند أول تحميل
   if (!lastMinuteData) {
     lastMinuteData = new Array(1440).fill(-1);
     updateHourBars(lastMinuteData);
